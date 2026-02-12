@@ -127,6 +127,32 @@ bool bplist_find_data_deep(const uint8_t *plist, size_t plist_len,
                            size_t out_capacity, size_t *out_len);
 
 /**
+ * Find a string value by key in a binary plist
+ * Supports both ASCII and UTF-8 string objects. For UTF-16 (UNICODE) strings,
+ * only ASCII code points are supported by the parser.
+ * @param plist Binary plist data
+ * @param plist_len Length of plist
+ * @param key Key to search for
+ * @param out Output buffer for string (NULL-terminated)
+ * @param out_capacity Capacity of output buffer
+ * @return true if found, false otherwise
+ */
+bool bplist_find_string(const uint8_t *plist, size_t plist_len, const char *key,
+                        char *out, size_t out_capacity);
+
+/**
+ * Find a string value by key anywhere in a binary plist
+ * @param plist Binary plist data
+ * @param plist_len Length of plist
+ * @param key Key to search for
+ * @param out Output buffer for string (NULL-terminated)
+ * @param out_capacity Capacity of output buffer
+ * @return true if found, false otherwise
+ */
+bool bplist_find_string_deep(const uint8_t *plist, size_t plist_len,
+                             const char *key, char *out, size_t out_capacity);
+
+/**
  * Get number of stream entries in a binary plist "streams" array
  * @param plist Binary plist data
  * @param plist_len Length of plist

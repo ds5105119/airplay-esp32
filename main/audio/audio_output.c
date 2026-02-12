@@ -31,6 +31,7 @@
 #endif
 
 static i2s_chan_handle_t tx_handle;
+static volatile bool flush_requested = false;
 
 static void apply_volume(int16_t *buf, size_t n) {
   int32_t vol = airplay_get_volume_q15();
@@ -52,6 +53,11 @@ static void playback_task(void *arg) {
 
   size_t written;
   while (true) {
+    if (flush_requested) {
+      flush_requested = false;
+      i2s_channel_disable(tx_handle);
+      i2s_channel_enable(tx_handle);
+    }
     size_t samples = audio_receiver_read(pcm, FRAME_SAMPLES + 1);
     if (samples > 0) {
       apply_volume(pcm, samples * 2);
@@ -111,4 +117,8 @@ esp_err_t audio_output_init(void) {
 void audio_output_start(void) {
   xTaskCreatePinnedToCore(playback_task, "audio_play", 4096, NULL, 7, NULL,
                           PLAYBACK_CORE);
+}
+
+void audio_output_flush(void) {
+  flush_requested = true;
 }

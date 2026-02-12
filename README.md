@@ -146,7 +146,7 @@ idf.py -p /dev/ttyUSB0 monitor
 ## Setup (First Boot)
 
 1. **Power up** the ESP32 via USB-C
-2. On your phone or laptop, connect to the WiFi network **`ESP32-AirPlay-Setup`**
+2. On your phone or laptop, connect to the WiFi network **`O1`**
 3. A captive portal will open. (IP: 192.168.4.1)
 4. Set a name for your speaker (e.g. "Kitchen Speaker")
 5. Select your home WiFi network and set a password

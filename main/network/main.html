@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width,initial-scale=1'>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>O1</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --card: #fff;
+      --cardAlt: #f5f5f7;
+      --text: #1d1d1f;
+      --sub: #a3a3a7;
+      --border: rgba(60, 60, 67, 0.14);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --blue: #007aff;
+      --blueH: #0066d6;
+      --red: #ff3b30;
+      --green: #34c759;
+      --pad: 16px
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      padding: var(--pad);
+      color: var(--text)
+    }
+
+    .wrap {
+      max-width: 520px;
+      margin: 0 auto
+    }
+
+    .header {
+      text-align: center;
+      padding: var(--pad) 0
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px
+    }
+
+    .header p {
+      color: var(--sub);
+      font-size: 13px
+    }
+
+    .status-bar {
+      border-radius: 16px;
+      padding: var(--pad);
+      margin-bottom: 18px;
+      background: var(--cardAlt);
+      display: flex;
+      gap: 16px;
+      align-items: flex-start
+    }
+
+    .status-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      color: #fff
+    }
+
+    .status-badge svg {
+      width: 18px;
+      height: 18px
+    }
+
+    .status-col {
+      flex: 1;
+      min-width: 0
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0
+    }
+
+    .status-spacer {
+      flex: 1
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      color: var(--text)
+    }
+
+    .status-icons svg {
+      width: 16px;
+      height: 16px
+    }
+
+    .status-icons .btn-small {
+      padding: 5px 12px;
+      font-size: 13px
+    }
+
+    .status-title {
+      font-size: 16px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .status-sub {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 14px;
+      letter-spacing: -0.01em
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto
+    }
+
+    .dot-loading {
+      background: #ffcc00
+    }
+
+    .dot-bad {
+      background: var(--red)
+    }
+
+    .dot-good {
+      background: var(--green)
+    }
+
+    .card {
+      padding: var(--pad) 0;
+      margin-bottom: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent
+    }
+
+    .wrap>.card:last-of-type {
+      border-bottom: none
+    }
+
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--pad);
+      color: var(--text)
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--sub);
+      margin: var(--pad) 0 8px 0
+    }
+
+    .form-group {
+      margin-bottom: var(--pad)
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 6px
+    }
+
+    input[type=text],
+    input[type=password] {
+      width: 100%;
+      padding: 12px var(--pad);
+      background: var(--cardAlt);
+      border: none;
+      border-radius: 16px;
+      color: var(--text);
+      font-size: 16px
+    }
+
+    input:focus {
+      outline: none;
+      background: #ececf1;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 16px;
+      border: 1px solid transparent;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.05s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease
+    }
+
+    .btn:active {
+      transform: scale(0.98)
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #fff
+    }
+
+    .btn-primary:hover {
+      background: var(--blueH)
+    }
+
+    .btn-secondary {
+      background: var(--cardAlt);
+      border-color: transparent;
+      color: var(--text)
+    }
+
+    .btn-secondary:hover {
+      background: #ececf1
+    }
+
+    .btn-danger {
+      background: var(--cardAlt);
+      color: var(--red)
+    }
+
+    .btn-danger:hover {
+      filter: brightness(94%)
+    }
+
+    .btn-blue {
+      background: var(--cardAlt);
+      color: var(--blue)
+    }
+
+    .btn-blue:hover {
+      filter: brightness(94%)
+    }
+
+    .btn-block {
+      width: 100%;
+      margin-top: var(--pad)
+    }
+
+    .btn-row {
+      display: flex;
+      gap: var(--pad);
+      margin-top: var(--pad)
+    }
+
+    .btn-row .btn {
+      flex: 1
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed
+    }
+
+    .wifi-list {
+      max-height: none;
+      overflow: visible;
+      margin: var(--pad) 0;
+      border-radius: 16px;
+      background: var(--cardAlt)
+    }
+
+    .saved-wifi-list {
+      max-height: none;
+      overflow: visible;
+      margin: var(--pad) 0;
+      border-radius: 16px;
+      background: var(--cardAlt)
+    }
+
+
+    /* When the WiFi list is shown inside the scan panel, make it fill the
+	       "Searching..." area naturally (no nested borders/margins). */
+    .scan-panel .wifi-list {
+      max-height: none;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      overflow: visible
+    }
+
+    .wifi-item {
+      padding: 14px var(--pad);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: var(--pad)
+    }
+
+    .wifi-item.saved {
+      height: 48px;
+      padding: 0 var(--pad)
+    }
+
+    .wifi-item+.wifi-item {
+      border-top: 1px solid var(--border)
+    }
+
+    .wifi-item:hover {
+      background: rgba(207, 207, 207, 0.07)
+    }
+
+    .wifi-item .ssid {
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .wifi-item .rssi {
+      font-size: 12px;
+      color: var(--sub)
+    }
+
+    .wifi-item .icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--sub)
+    }
+
+    .wifi-item .icons svg {
+      width: 18px;
+      height: 18px
+    }
+
+    .wifi-item .icons .lock-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px
+    }
+
+    .wifi-item .icons .lock-slot.placeholder {
+      opacity: 0
+    }
+
+    .wifi-item .delete-btn {
+      padding: 5px 12px;
+      font-size: 13px;
+      border-radius: 8px;
+      filter: brightness(94%)
+    }
+
+    .scan-panel {
+      border: none;
+      border-radius: 16px;
+      background: var(--cardAlt);
+      overflow: hidden
+    }
+
+    .scan-title {
+      padding: 24px var(--pad);
+      text-align: center;
+      color: var(--sub);
+      font-weight: 500
+    }
+
+    .scan-footer {
+      display: flex;
+      align-items: center;
+      gap: var(--pad);
+      padding: 12px var(--pad);
+      border-top: 1px solid var(--border)
+    }
+
+    .btn-small {
+      padding: 5px 12px;
+      font-size: 13px;
+      border-radius: 8px;
+      filter: brightness(94%)
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--pad);
+      z-index: 1000
+    }
+
+    .modal.hidden {
+      display: none
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 16px;
+      border: none;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+      overflow: hidden
+    }
+
+    .modal-header {
+      padding: var(--pad) var(--pad) 0 var(--pad);
+      border-bottom: none;
+      font-weight: 700;
+      letter-spacing: -0.01em
+    }
+
+    .modal-body {
+      padding: var(--pad)
+    }
+
+    .form-list {
+      border-radius: 16px;
+      background: var(--cardAlt);
+      overflow: hidden
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: var(--pad);
+      padding: 4px var(--pad)
+    }
+
+    .form-row-firmware {
+      display: flex;
+      align-items: center;
+      gap: var(--pad);
+      padding: 14px var(--pad)
+    }
+
+    .form-row+.form-row {
+      border-top: 1px solid var(--border)
+    }
+
+    .form-row.clickable {
+      cursor: pointer
+    }
+
+    .form-row.clickable:hover {
+      background: rgba(0, 0, 0, 0.03)
+    }
+
+    .form-row.clickable:active {
+      background: rgba(0, 0, 0, 0.06)
+    }
+
+    .form-row:focus-within {
+      background: rgba(0, 0, 0, 0.03)
+    }
+
+    .form-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 0 0 auto
+    }
+
+    .form-row input[type=text],
+    .form-row input[type=password] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 10px 0;
+      text-align: right
+    }
+
+    .form-row input[type=text]:focus,
+    .form-row input[type=password]:focus {
+      background: transparent;
+      box-shadow: none
+    }
+
+    .form-value {
+      flex: 1;
+      text-align: right;
+      color: var(--sub);
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: row;
+      padding: 0;
+      border-top: 1px solid var(--border);
+      background: var(--cardAlt)
+    }
+
+    .dialog-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      background: transparent;
+      padding: var(--pad);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--blue);
+      cursor: pointer;
+      flex: 1
+    }
+
+    .dialog-btn+.dialog-btn {
+      border-left: 1px solid var(--border)
+    }
+
+    .dialog-btn:hover {
+      background: rgba(0, 0, 0, 0.03)
+    }
+
+    .dialog-btn:active {
+      background: rgba(0, 0, 0, 0.06)
+    }
+
+    .dialog-btn:disabled {
+      color: var(--sub);
+      cursor: not-allowed
+    }
+
+    .info-grid {
+      margin-top: var(--pad);
+      border-radius: 16px;
+      background: var(--cardAlt);
+      overflow: hidden
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px var(--pad);
+      gap: var(--pad)
+    }
+
+    .info-item+.info-item {
+      border-top: 1px solid var(--border)
+    }
+
+    .info-item.clickable {
+      cursor: pointer
+    }
+
+    .info-item.clickable:hover {
+      background: rgba(0, 0, 0, 0.03)
+    }
+
+    .info-item.clickable:active {
+      background: rgba(0, 0, 0, 0.06)
+    }
+
+    .info-item label {
+      font-size: 14px;
+      display: inline-block;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .info-item span {
+      color: var(--sub);
+      font-size: 14px;
+    }
+
+    .msg {
+      padding: 12px var(--pad);
+      border-radius: 16px;
+      margin-top: var(--pad);
+      font-size: 13px;
+      border: none;
+      background: var(--cardAlt)
+    }
+
+    .msg.ok {
+      background: rgba(52, 199, 89, 0.12);
+      border-color: transparent
+    }
+
+    .msg.err {
+      background: rgba(255, 59, 48, 0.12);
+      border-color: transparent
+    }
+
+    .msg.info {
+      background: rgba(0, 122, 255, 0.10);
+      border-color: transparent
+    }
+
+    .file-row {
+      display: flex;
+      gap: var(--pad);
+      align-items: center
+    }
+
+    .file-name {
+      flex: 1;
+      font-size: 13px;
+      color: var(--sub);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--pad);
+      margin-top: var(--pad)
+    }
+
+    @media (max-width:380px) {
+      .actions {
+        flex-direction: column
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class='wrap'>
+    <div id='status-bar' class='status-bar'>
+      <div class="status-col">
+        <div class="status-row">
+          <div class="status-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="lucide lucide-wifi-icon lucide-wifi">
+              <path d="M12 20h.01" />
+              <path d="M2 8.82a15 15 0 0 1 20 0" />
+              <path d="M5 12.859a10 10 0 0 1 14 0" />
+              <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+            </svg>
+          </div>
+          <div class="status-title">Wi-Fi</div>
+        </div>
+        <div class="status-row status-sub">
+          <span class="status-dot dot-loading"></span>
+          <span class="status-text">Loading...</span>
+          <div class="status-spacer"></div>
+          <div class="status-icons" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+    <div class='card'>
+      <h2>Saved WiFi Network</h2>
+      <div id='saved-wifi'></div>
+    </div>
+
+    <div class='card'>
+      <h2>WiFi Network</h2>
+      <div id='wifi-list'></div>
+    </div>
+    <div class='card'>
+      <h2>System</h2>
+      <div class='info-grid'>
+        <div class='info-item'><label>IP Address</label><span id='info-ip'>-</span></div>
+        <div class='info-item'><label>MAC Address</label><span id='info-mac'>-</span></div>
+        <div class='info-item clickable' onclick='openDeviceNameDialog()'><label>Device Name</label><span
+            id='info-name'>-</span></div>
+        <div class='info-item clickable' onclick='openFirmwareUpdateDialog()'><label>Firmware Version</label><span
+            id='info-fw'>Unknown</span></div>
+        <div class='info-item'><label>Free Memory</label><span id='info-heap'>-</span></div>
+      </div>
+      <div class='actions'>
+        <button class='btn btn-blue' onclick='closeSettings()'>Close Settings</button>
+        <button class='btn btn-danger' onclick='restart()'>Restart Device</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function msg(id, txt, type) { var e = document.getElementById(id); if (e) { e.innerHTML = '<div class="msg ' + type + '">' + txt + '</div>'; setTimeout(function () { e.innerHTML = ''; }, 4000); } }
+    function svgLock() {
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-icon lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+    }
+    function svgWifiStrongest() {
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wifi-icon lucide-wifi"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></svg>';
+    }
+    function svgWifiHigh() {
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wifi-high-icon lucide-wifi-high"><path d="M12 20h.01"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></svg>';
+    }
+    function svgWifiLow() {
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wifi-low-icon lucide-wifi-low"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></svg>';
+    }
+    function wifiIconForRssi(rssi) {
+      // Typical RSSI mapping (dBm): closer to 0 is stronger.
+      if (rssi >= -55) return svgWifiStrongest();
+      if (rssi >= -70) return svgWifiHigh();
+      return svgWifiLow();
+    }
+    function esc(s) {
+      return String(s || '').replace(/[&<>"']/g, function (c) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+      });
+    }
+    function renderWifiStatus(info) {
+      var b = document.getElementById('status-bar');
+      if (!b) return;
+
+      var col = b.querySelector('.status-col');
+      if (!col) return;
+
+      var iconBox = col.querySelector('.status-icons');
+      var dot = col.querySelector('.status-dot');
+      var text = col.querySelector('.status-text');
+
+      var connected = info && info.wifi_connected;
+      var dotClass = 'dot-loading';
+      var subText = 'Loading...';
+      var icons = '';
+
+      if (info) {
+        if (connected) {
+          dotClass = 'dot-good';
+          var ssid = String(info.ssid || '').trim();
+          subText = ssid ? ('Connected - ' + ssid) : 'Connected';
+          var wifi = wifiIconForRssi(typeof info.rssi === 'number' ? info.rssi : -80);
+          var lock = info.secure ? svgLock() : '';
+          var disc = '<button class="btn btn-secondary btn-small" onclick="disconnectWiFi()">Disconnect</button>';
+          icons = lock + wifi + disc;
+        } else {
+          dotClass = 'dot-bad';
+          subText = 'Not Connected';
+        }
+      }
+
+      if (dot) dot.className = 'status-dot ' + dotClass;
+      if (text) text.textContent = subText;
+      if (iconBox) iconBox.innerHTML = icons;
+    }
+
+    async function disconnectWiFi() {
+      try {
+        var r = await fetch('/api/wifi/disconnect', { method: 'POST' });
+        var d = await r.json();
+        if (!(d && d.success)) console.warn('WiFi disconnect failed:', (d && d.error) ? d.error : d);
+      } catch (e) {
+        console.warn('WiFi disconnect error:', e);
+      }
+      loadInfo();
+    }
+
+    var savedNetworks = [];
+    var lastScanNetworks = [];
+
+    function getScanRecordForSsid(ssid) {
+      for (var i = 0; i < (lastScanNetworks || []).length; i++) {
+        var n = lastScanNetworks[i];
+        if (n && n.ssid === ssid) return n;
+      }
+      return null;
+    }
+
+    function renderSavedWiFi() {
+      var host = document.getElementById('saved-wifi');
+      if (!host) return;
+      host.innerHTML = '';
+
+      if (!savedNetworks || savedNetworks.length === 0) {
+        return;
+      }
+
+      var list = document.createElement('div');
+      list.className = 'wifi-list';
+      list.style.marginBottom = '0';
+
+      savedNetworks.forEach(function (sn) {
+        var ssid = sn.ssid || '';
+        if (!ssid) return;
+        var scanRec = getScanRecordForSsid(ssid);
+        var rssi = scanRec && typeof scanRec.rssi === 'number' ? scanRec.rssi : -90;
+        var secure = (typeof sn.secure === 'boolean') ? sn.secure : (scanRec ? !!scanRec.secure : false);
+
+        var item = document.createElement('div');
+        item.className = 'wifi-item saved';
+
+        var del = document.createElement('button');
+        del.className = 'btn btn-secondary btn-small delete-btn';
+        del.textContent = 'Delete';
+        del.onclick = function (e) {
+          e.stopPropagation();
+          forgetWiFi();
+        };
+
+        var ss = document.createElement('span');
+        ss.className = 'ssid';
+        ss.textContent = ssid;
+
+        var icons = document.createElement('span');
+        icons.className = 'icons';
+        icons.innerHTML =
+          '<span class="lock-slot ' + (secure ? '' : 'placeholder') + '">' + svgLock() + '</span>' +
+          wifiIconForRssi(rssi);
+
+        // Order: SSID ... Delete ... Lock (if secure) ... WiFi icon
+        item.appendChild(ss);
+        item.appendChild(del);
+        item.appendChild(icons);
+        list.appendChild(item);
+      });
+
+      host.appendChild(list);
+    }
+
+    async function loadSavedWiFi() {
+      try {
+        var r = await fetch('/api/wifi/saved');
+        var d = await r.json();
+        if (d && d.success) {
+          savedNetworks = d.networks || [];
+          renderSavedWiFi();
+        }
+      } catch (e) { }
+    }
+
+    async function forgetWiFi() {
+      try {
+        var r = await fetch('/api/wifi/forget', { method: 'POST' });
+        var d = await r.json();
+        if (!(d && d.success)) console.warn('WiFi forget failed:', (d && d.error) ? d.error : d);
+      } catch (e) {
+        console.warn('WiFi forget error:', e);
+      }
+      savedNetworks = [];
+      renderSavedWiFi();
+      loadInfo();
+      scanWiFi();
+    }
+    function openManualDialog(ssid, pass, focusPassword) {
+      var m = document.getElementById('manual-modal');
+      if (!m) return;
+      document.getElementById('manual-ssid').value = ssid || '';
+      document.getElementById('manual-pass').value = pass || '';
+      m.classList.remove('hidden');
+      if (focusPassword) {
+        document.getElementById('manual-pass').focus();
+      } else {
+        document.getElementById('manual-ssid').focus();
+      }
+    }
+    function closeManualDialog() {
+      var m = document.getElementById('manual-modal');
+      if (!m) return;
+      m.classList.add('hidden');
+    }
+
+    function openDeviceNameDialog() {
+      var m = document.getElementById('device-name-modal');
+      if (!m) return;
+      var cur = document.getElementById('info-name');
+      document.getElementById('device-name-input').value = cur ? (cur.textContent || '').trim() : '';
+      m.classList.remove('hidden');
+      document.getElementById('device-name-input').focus();
+    }
+
+    function closeDeviceNameDialog() {
+      var m = document.getElementById('device-name-modal');
+      if (!m) return;
+      m.classList.add('hidden');
+    }
+
+    async function applyDeviceNameDialog() {
+      var n = (document.getElementById('device-name-input').value || '').trim();
+      if (!n) return;
+      try {
+        var r = await fetch('/api/device/name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: n })
+        });
+        var d = await r.json();
+        if (d && d.success) {
+          closeDeviceNameDialog();
+          loadInfo();
+        } else {
+          console.warn('Device name save failed:', (d && d.error) ? d.error : d);
+        }
+      } catch (e) {
+        console.warn('Device name save error:', e);
+      }
+    }
+
+    function openFirmwareUpdateDialog() {
+      var m = document.getElementById('firmware-modal');
+      if (!m) return;
+      var f = document.getElementById('ota-file');
+      if (f) f.value = '';
+      var n = document.getElementById('ota-file-name');
+      if (n) n.textContent = 'No file selected';
+      var upload = document.getElementById('ota-upload-btn');
+      var cancel = document.getElementById('ota-cancel-btn');
+      if (upload) { upload.disabled = true; upload.textContent = 'Upload'; }
+      if (cancel) cancel.disabled = false;
+      m.classList.remove('hidden');
+    }
+
+    function closeFirmwareUpdateDialog() {
+      var m = document.getElementById('firmware-modal');
+      if (!m) return;
+      m.classList.add('hidden');
+    }
+
+    function onOtaFileSelected() {
+      var f = document.getElementById('ota-file');
+      var file = f && f.files ? f.files[0] : null;
+      var name = document.getElementById('ota-file-name');
+      var upload = document.getElementById('ota-upload-btn');
+      if (name) name.textContent = file ? file.name : 'No file selected';
+      if (upload) upload.disabled = !file;
+    }
+
+    async function uploadFirmware() {
+      var f = document.getElementById('ota-file');
+      var file = f && f.files ? f.files[0] : null;
+      if (!file) return;
+      var upload = document.getElementById('ota-upload-btn');
+      var cancel = document.getElementById('ota-cancel-btn');
+      if (upload) { upload.disabled = true; upload.textContent = 'Uploading...'; }
+      if (cancel) cancel.disabled = true;
+      try {
+        await fetch('/api/ota/update', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
+      } catch (e) {
+        console.warn('OTA upload failed:', e);
+      }
+      closeFirmwareUpdateDialog();
+    }
+    function applyManualDialog() {
+      var ssid = (document.getElementById('manual-ssid').value || '').trim();
+      var pass = document.getElementById('manual-pass').value || '';
+      if (!ssid) {
+        return;
+      }
+      closeManualDialog();
+      saveWiFi(ssid, pass);
+    }
+    function renderScanPanel(innerListNode, footerMode) {
+      // footerMode: 'scanning' | 'idle' (kept for compatibility)
+      var panel = document.createElement('div');
+      panel.className = 'scan-panel';
+
+      if (innerListNode) {
+        panel.appendChild(innerListNode);
+      }
+
+      var footer = document.createElement('div');
+      footer.className = 'scan-footer';
+
+      var spacer = document.createElement('div');
+      spacer.style.flex = '1';
+      footer.appendChild(spacer);
+
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-secondary btn-small';
+      btn.textContent = 'etc...';
+      btn.onclick = function () { openManualDialog(); };
+      var scanBtn = document.createElement('button');
+      scanBtn.className = 'btn btn-secondary btn-small';
+      scanBtn.textContent = 'Scan';
+      scanBtn.onclick = function () { scanWiFi(); };
+      footer.appendChild(scanBtn);
+      footer.appendChild(btn);
+
+      panel.appendChild(footer);
+      return panel;
+    }
+    async function scanWiFi() {
+      var l = document.getElementById('wifi-list');
+      l.innerHTML = '';
+      var scanningTitle = document.createElement('div');
+      scanningTitle.className = 'scan-title';
+      scanningTitle.textContent = 'Searching...';
+      l.appendChild(renderScanPanel(scanningTitle, 'scanning'));
+      try {
+        var r = await fetch('/api/wifi/scan'); var d = await r.json();
+        lastScanNetworks = (d && d.networks) ? d.networks : [];
+        renderSavedWiFi();
+        if (d.success && d.networks.length > 0) {
+          l.innerHTML = '';
+          var list = document.createElement('div');
+          list.className = 'wifi-list';
+          d.networks.forEach(function (n) {
+            var i = document.createElement('div'); i.className = 'wifi-item';
+            var lock = n.secure ? svgLock() : '';
+            var wifi = wifiIconForRssi(n.rssi);
+            i.innerHTML = '<span class="ssid">' + n.ssid + '</span><span class="icons">' + lock + wifi + '</span>';
+            i.onclick = function () {
+              document.querySelectorAll('.wifi-item').forEach(function (x) { x.classList.remove('sel'); });
+              i.classList.add('sel');
+              if (n.secure) {
+                openManualDialog(n.ssid, '', true);
+              } else {
+                saveWiFi(n.ssid, '');
+              }
+            };
+            list.appendChild(i);
+          });
+          l.appendChild(renderScanPanel(list, 'idle'));
+        }
+        else {
+          l.innerHTML = '';
+          var emptyTitle = document.createElement('div');
+          emptyTitle.className = 'scan-title';
+          emptyTitle.textContent = 'No networks found';
+          l.appendChild(renderScanPanel(emptyTitle, 'idle'));
+        }
+      }
+      catch (e) {
+        lastScanNetworks = [];
+        renderSavedWiFi();
+        l.innerHTML = '';
+        var errTitle = document.createElement('div');
+        errTitle.className = 'scan-title';
+        errTitle.textContent = 'Scan failed';
+        l.appendChild(renderScanPanel(errTitle, 'idle'));
+      }
+    }
+    async function saveWiFi(ssid, password) {
+      var s = (ssid || '').trim(); var p = password || '';
+      if (!s) { return; }
+      try {
+        var r = await fetch('/api/wifi/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ssid: s, password: p }) });
+        var d = await r.json();
+        if (!d.success) console.warn('WiFi save failed:', d.error);
+      }
+      catch (e) { console.warn('WiFi save error:', e); }
+    }
+    async function restart() {
+      if (!confirm('Restart the device?')) return;
+      try { await fetch('/api/system/restart', { method: 'POST' }); msg('', 'Restarting...', 'info'); } catch (e) { }
+    }
+
+    async function closeSettings() {
+      if (!confirm("Close Settings AP?\n\nIf you're connected to the device AP (O1), you may be disconnected.")) return;
+      try {
+        var r = await fetch('/api/settings/close', { method: 'POST' });
+        var d = await r.json();
+        if (!(d && d.success)) console.warn('Close settings failed:', (d && d.error) ? d.error : d);
+      } catch (e) {
+        console.warn('Close settings error:', e);
+      }
+    }
+    async function loadInfo() {
+      try {
+        var r = await fetch('/api/system/info'); var d = await r.json();
+        if (d.success) {
+          var i = d.info;
+          renderWifiStatus(i);
+          document.getElementById('info-ip').textContent = i.ip || '-';
+          document.getElementById('info-mac').textContent = i.mac || '-';
+          document.getElementById('info-name').textContent = i.device_name || '-';
+          document.getElementById('info-fw').textContent = i.firmware_version || 'Unknown';
+          document.getElementById('info-heap').textContent = Math.round(i.free_heap / 1024) + ' KB';
+        }
+      } catch (e) { }
+    }
+    window.onload = function () {
+      var of = document.getElementById('ota-file');
+      if (of) of.onchange = onOtaFileSelected;
+      loadSavedWiFi();
+      loadInfo();
+      scanWiFi();
+      setInterval(loadInfo, 30000);
+    };
+  </script>
+  <div id="manual-modal" class="modal hidden" onclick="if(event.target===this)closeManualDialog()">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="manual-title">
+      <div class="modal-header" id="manual-title">
+        <div class="status-row">
+          <div class="status-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="lucide lucide-wifi-icon lucide-wifi">
+              <path d="M12 20h.01" />
+              <path d="M2 8.82a15 15 0 0 1 20 0" />
+              <path d="M5 12.859a10 10 0 0 1 14 0" />
+              <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+            </svg>
+          </div>
+          <div class="status-title">Connect to Wi-Fi</div>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-list">
+          <div class="form-row">
+            <div class="form-label">SSID</div>
+            <input type="text" id="manual-ssid" placeholder="Enter SSID" autocomplete="off" autocapitalize="none"
+              spellcheck="false">
+          </div>
+          <div class="form-row">
+            <div class="form-label">Password</div>
+            <input type="password" id="manual-pass" placeholder="Password" autocomplete="current-password">
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="dialog-btn" onclick="closeManualDialog()">Cancel</button>
+        <button class="dialog-btn" onclick="applyManualDialog()">Connect</button>
+      </div>
+    </div>
+  </div>
+  <div id="device-name-modal" class="modal hidden" onclick="if(event.target===this)closeDeviceNameDialog()">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="devname-title">
+      <div class="modal-header" id="devname-title">Device Name</div>
+      <div class="modal-body">
+        <div class="form-list">
+          <div class="form-row">
+            <div class="form-label">Name</div>
+            <input type="text" id="device-name-input" placeholder="O1" autocomplete="off" autocapitalize="none"
+              spellcheck="false">
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="dialog-btn" onclick="closeDeviceNameDialog()">Cancel</button>
+        <button class="dialog-btn" onclick="applyDeviceNameDialog()">Save</button>
+      </div>
+    </div>
+  </div>
+  <div id="firmware-modal" class="modal hidden" onclick="if(event.target===this)closeFirmwareUpdateDialog()">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="fw-title">
+      <div class="modal-header" id="fw-title">Firmware Update</div>
+      <div class="modal-body">
+        <input type="file" id="ota-file" accept=".bin" style="display:none">
+        <div class="form-list">
+          <div class="form-row-firmware clickable" onclick="document.getElementById('ota-file').click()">
+            <div class="form-label">Firmware</div>
+            <div class="form-value" id="ota-file-name">No file selected</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="dialog-btn" id="ota-cancel-btn" onclick="closeFirmwareUpdateDialog()">Cancel</button>
+        <button class="dialog-btn" id="ota-upload-btn" onclick="uploadFirmware()" disabled>Upload</button>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

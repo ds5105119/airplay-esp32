@@ -1,5 +1,6 @@
 #include "rtsp_message.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +10,65 @@
 #include "rtsp_crypto.h"
 
 static const char *TAG = "rtsp_message";
+
+static const char *find_header_ci(const char *headers, const char *key) {
+  if (!headers || !key) {
+    return NULL;
+  }
+
+  size_t key_len = strlen(key);
+  if (key_len == 0) {
+    return NULL;
+  }
+
+  const char *p = headers;
+  while (*p) {
+    const char *line_end = strstr(p, "\r\n");
+    if (!line_end) {
+      line_end = p + strlen(p);
+    }
+
+    if ((size_t)(line_end - p) >= key_len &&
+        strncasecmp(p, key, key_len) == 0) {
+      const char *v = p + key_len;
+      while (*v == ' ' || *v == '\t') {
+        v++;
+      }
+      return v;
+    }
+
+    if (*line_end == '\0') {
+      break;
+    }
+    p = line_end + 2;
+  }
+
+  return NULL;
+}
+
+static void copy_header_value_token(char *dst, size_t dst_cap, const char *src) {
+  if (!dst || dst_cap == 0) {
+    return;
+  }
+  dst[0] = '\0';
+  if (!src) {
+    return;
+  }
+
+  size_t w = 0;
+  while (src[w] && src[w] != '\r' && src[w] != '\n' &&
+         (w + 1) < dst_cap) {
+    dst[w] = src[w];
+    w++;
+  }
+  dst[w] = '\0';
+
+  // Trim trailing spaces
+  while (w > 0 && (dst[w - 1] == ' ' || dst[w - 1] == '\t')) {
+    dst[w - 1] = '\0';
+    w--;
+  }
+}
 
 const uint8_t *rtsp_find_header_end(const uint8_t *data, size_t len) {
   for (size_t i = 0; i + 3 < len; i++) {
@@ -105,16 +165,36 @@ int rtsp_request_parse(const uint8_t *data, size_t len, rtsp_request_t *req) {
     return -1;
   }
 
+  // Parse headers in a case-insensitive way (some clients vary header casing)
+  const size_t header_bytes = (size_t)(header_end - data);
+  char header_str[1024];
+  size_t copy_len = header_bytes;
+  if (copy_len >= sizeof(header_str)) {
+    copy_len = sizeof(header_str) - 1;
+  }
+  memcpy(header_str, data, copy_len);
+  header_str[copy_len] = '\0';
+
   // Parse CSeq
-  req->cseq = rtsp_parse_cseq((const char *)data);
+  const char *cseq = find_header_ci(header_str, "CSeq:");
+  if (cseq) {
+    req->cseq = atoi(cseq);
+  } else {
+    req->cseq = 1;
+  }
 
   // Parse Content-Length
-  req->content_length = (size_t)rtsp_parse_content_length((const char *)data);
+  const char *cl = find_header_ci(header_str, "Content-Length:");
+  if (cl) {
+    req->content_length = (size_t)atoi(cl);
+  } else {
+    req->content_length = 0;
+  }
 
-  // Parse Content-Type
-  const char *ct = strstr((const char *)data, "Content-Type:");
+  // Parse Content-Type (store whole value line, incl. optional params)
+  const char *ct = find_header_ci(header_str, "Content-Type:");
   if (ct) {
-    sscanf(ct, "Content-Type: %63s", req->content_type);
+    copy_header_value_token(req->content_type, sizeof(req->content_type), ct);
   }
 
   // Get body

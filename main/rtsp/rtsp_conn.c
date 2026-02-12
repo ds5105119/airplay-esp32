@@ -74,6 +74,15 @@ void rtsp_conn_cleanup(rtsp_conn_t *conn) {
     return;
   }
 
+  if (conn->crypto_rx.encrypted) {
+    free(conn->crypto_rx.encrypted);
+    conn->crypto_rx.encrypted = NULL;
+  }
+  conn->crypto_rx.len_received = 0;
+  conn->crypto_rx.block_len = 0;
+  conn->crypto_rx.encrypted_len = 0;
+  conn->crypto_rx.encrypted_received = 0;
+
   // Stop audio receiver
   audio_receiver_stop();
 

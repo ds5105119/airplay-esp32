@@ -21,7 +21,7 @@
  * @param conn Connection state (must have hap_session and encrypted_mode)
  * @param buffer Output buffer for decrypted data
  * @param buffer_size Size of output buffer
- * @return Decrypted length on success, -1 on error
+ * @return Decrypted length on success, 0 if need more data (timeout), -1 on error
  */
 int rtsp_crypto_read_block(int socket, rtsp_conn_t *conn, uint8_t *buffer,
                            size_t buffer_size);

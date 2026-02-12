@@ -132,6 +132,100 @@ menu "Airplay ESP Configuration"
         endmenu
     endmenu
 
+    menu "LCD (1602) settings"
+        choice LCD_MODE
+            prompt "LCD interface"
+            default LCD_MODE_I2C
+            help
+                Select how the 16x2 HD44780 LCD is connected.
+
+            config LCD_MODE_NONE
+                bool "Disabled"
+
+            config LCD_MODE_I2C
+                bool "I2C backpack (PCF8574)"
+
+            config LCD_MODE_4BIT
+                bool "4-bit GPIO"
+        endchoice
+
+        config I2C_LCD_SDA_GPIO
+            int "LCD I2C SDA GPIO"
+            depends on LCD_MODE_I2C
+            default 15
+
+        config I2C_LCD_SCL_GPIO
+            int "LCD I2C SCL GPIO"
+            depends on LCD_MODE_I2C
+            default 16
+
+        config I2C_LCD_I2C_PORT
+            int "I2C port number"
+            depends on LCD_MODE_I2C
+            range 0 1
+            default 0
+
+        config I2C_LCD_I2C_ADDR
+            hex "PCF8574 I2C address"
+            depends on LCD_MODE_I2C
+            default 0x27
+
+        config LCD_4BIT_RS_GPIO
+            int "LCD 4-bit RS GPIO"
+            depends on LCD_MODE_4BIT
+            default 4
+
+        config LCD_4BIT_E_GPIO
+            int "LCD 4-bit E GPIO"
+            depends on LCD_MODE_4BIT
+            default 5
+
+        config LCD_4BIT_D4_GPIO
+            int "LCD 4-bit D4 GPIO"
+            depends on LCD_MODE_4BIT
+            default 6
+
+        config LCD_4BIT_D5_GPIO
+            int "LCD 4-bit D5 GPIO"
+            depends on LCD_MODE_4BIT
+            default 7
+
+        config LCD_4BIT_D6_GPIO
+            int "LCD 4-bit D6 GPIO"
+            depends on LCD_MODE_4BIT
+            default 15
+
+        config LCD_4BIT_D7_GPIO
+            int "LCD 4-bit D7 GPIO"
+            depends on LCD_MODE_4BIT
+            default 16
+
+        config I2C_LCD_UPDATE_MS
+            int "LCD refresh interval (ms)"
+            depends on LCD_MODE_I2C || LCD_MODE_4BIT
+            range 100 2000
+            default 250
+
+        config I2C_LCD_SCROLL_MS
+            int "Title scroll step interval (ms)"
+            depends on LCD_MODE_I2C || LCD_MODE_4BIT
+            range 200 10000
+            default 2000
+
+        config I2C_LCD_SCROLL_RESET_WAIT_MS
+            int "Title reset wait (ms)"
+            depends on LCD_MODE_I2C || LCD_MODE_4BIT
+            range 0 20000
+            default 5000
+    endmenu
+
+    config RTSP_METADATA_DEBUG
+        bool "Debug: log AirPlay metadata/progress"
+        default n
+        help
+            Logs SET_PARAMETER Content-Type/body snippets and parsed title/progress/rate.
+            Useful when LCD does not update.
+
     menu "DAC settings"
         menu "I2S settings"
             config I2S_BCK_IO
@@ -213,13 +307,13 @@ endmenu
 menu "Wifi Configuration"
   config DEFAULT_AP_SSID
       string "Access Point SSID"
-      default "esp32"
+      default "O1"
       help
         SSID (network name) the the esp32 will broadcast.
 
   config DEFAULT_AP_PASSWORD
       string "Access Point Password"
-      default "esp32pwd"
+      default "O1Airplay"
       help
         Password used for the Access Point. Leave empty and set AUTH MODE to WIFI_AUTH_OPEN for no password.
 

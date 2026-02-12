@@ -1,5 +1,6 @@
 #include "rtsp_crypto.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -29,41 +30,81 @@ int rtsp_crypto_read_block(int socket, rtsp_conn_t *conn, uint8_t *buffer,
     return -1;
   }
 
-  // Read 2-byte length header (little-endian)
-  uint8_t len_buf[2];
-  int received = 0;
-  while (received < 2) {
-    int r = recv(socket, len_buf + received, 2 - received, 0);
-    if (r <= 0) {
+  // Read 2-byte length header (little-endian). Keep partial read state in conn.
+  while (conn->crypto_rx.len_received < sizeof(conn->crypto_rx.len_buf)) {
+    int r = recv(socket,
+                 conn->crypto_rx.len_buf + conn->crypto_rx.len_received,
+                 sizeof(conn->crypto_rx.len_buf) - conn->crypto_rx.len_received,
+                 0);
+    if (r < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return 0;
+      }
       return -1;
     }
-    received += r;
-  }
-
-  uint16_t block_len = (uint16_t)len_buf[0] | ((uint16_t)len_buf[1] << 8);
-
-  if (block_len == 0 || block_len > RTSP_ENCRYPTED_BLOCK_MAX ||
-      block_len > buffer_size) {
-    ESP_LOGE(TAG, "Invalid encrypted block length: %d", block_len);
-    return -1;
-  }
-
-  // Allocate temporary buffer for encrypted data
-  size_t encrypted_len = block_len + 16; // +16 for Poly1305 tag
-  uint8_t *encrypted = malloc(encrypted_len);
-  if (!encrypted) {
-    ESP_LOGE(TAG, "Failed to allocate encrypted buffer");
-    return -1;
-  }
-
-  received = 0;
-  while ((size_t)received < encrypted_len) {
-    int r = recv(socket, encrypted + received, encrypted_len - received, 0);
-    if (r <= 0) {
-      free(encrypted);
+    if (r == 0) {
       return -1;
     }
-    received += r;
+    conn->crypto_rx.len_received += (uint8_t)r;
+  }
+
+  // Allocate encrypted buffer once we have a full length header
+  if (!conn->crypto_rx.encrypted) {
+    uint16_t block_len = (uint16_t)conn->crypto_rx.len_buf[0] |
+                         ((uint16_t)conn->crypto_rx.len_buf[1] << 8);
+
+    if (block_len == 0 || block_len > RTSP_ENCRYPTED_BLOCK_MAX ||
+        block_len > buffer_size) {
+      ESP_LOGE(TAG, "Invalid encrypted block length: %d", block_len);
+      conn->crypto_rx.len_received = 0;
+      conn->crypto_rx.block_len = 0;
+      errno = EBADMSG;
+      return -1;
+    }
+
+    conn->crypto_rx.block_len = block_len;
+    conn->crypto_rx.encrypted_len = (size_t)block_len + 16; // +16 tag
+    conn->crypto_rx.encrypted_received = 0;
+    conn->crypto_rx.encrypted = malloc(conn->crypto_rx.encrypted_len);
+    if (!conn->crypto_rx.encrypted) {
+      ESP_LOGE(TAG, "Failed to allocate encrypted buffer");
+      conn->crypto_rx.len_received = 0;
+      conn->crypto_rx.block_len = 0;
+      conn->crypto_rx.encrypted_len = 0;
+      errno = ENOMEM;
+      return -1;
+    }
+  }
+
+  // Read encrypted payload (+ tag), keeping partial state across timeouts.
+  while (conn->crypto_rx.encrypted_received < conn->crypto_rx.encrypted_len) {
+    int r = recv(socket,
+                 conn->crypto_rx.encrypted + conn->crypto_rx.encrypted_received,
+                 conn->crypto_rx.encrypted_len - conn->crypto_rx.encrypted_received,
+                 0);
+    if (r < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return 0;
+      }
+      free(conn->crypto_rx.encrypted);
+      conn->crypto_rx.encrypted = NULL;
+      conn->crypto_rx.len_received = 0;
+      conn->crypto_rx.block_len = 0;
+      conn->crypto_rx.encrypted_len = 0;
+      conn->crypto_rx.encrypted_received = 0;
+      return -1;
+    }
+    if (r == 0) {
+      free(conn->crypto_rx.encrypted);
+      conn->crypto_rx.encrypted = NULL;
+      conn->crypto_rx.len_received = 0;
+      conn->crypto_rx.block_len = 0;
+      conn->crypto_rx.encrypted_len = 0;
+      conn->crypto_rx.encrypted_received = 0;
+      errno = ECONNRESET;
+      return -1;
+    }
+    conn->crypto_rx.encrypted_received += (size_t)r;
   }
 
   // Decrypt using session keys
@@ -72,15 +113,34 @@ int rtsp_crypto_read_block(int socket, rtsp_conn_t *conn, uint8_t *buffer,
 
   unsigned long long plaintext_len;
   if (crypto_aead_chacha20poly1305_ietf_decrypt(
-          buffer, &plaintext_len, NULL, encrypted, encrypted_len, len_buf,
-          sizeof(len_buf), nonce, conn->hap_session->decrypt_key) != 0) {
-    free(encrypted);
+          buffer, &plaintext_len, NULL, conn->crypto_rx.encrypted,
+          conn->crypto_rx.encrypted_len, conn->crypto_rx.len_buf,
+          sizeof(conn->crypto_rx.len_buf), nonce,
+          conn->hap_session->decrypt_key) != 0) {
+    free(conn->crypto_rx.encrypted);
+    conn->crypto_rx.encrypted = NULL;
+    conn->crypto_rx.len_received = 0;
+    conn->crypto_rx.block_len = 0;
+    conn->crypto_rx.encrypted_len = 0;
+    conn->crypto_rx.encrypted_received = 0;
     ESP_LOGE(TAG, "Failed to decrypt frame");
+    errno = EBADMSG;
     return -1;
   }
-  free(encrypted);
+  free(conn->crypto_rx.encrypted);
+  conn->crypto_rx.encrypted = NULL;
+  conn->crypto_rx.len_received = 0;
+  conn->crypto_rx.block_len = 0;
+  conn->crypto_rx.encrypted_len = 0;
+  conn->crypto_rx.encrypted_received = 0;
 
   conn->hap_session->decrypt_nonce++;
+
+  if (plaintext_len > buffer_size) {
+    ESP_LOGE(TAG, "Decrypted length too large: %llu", plaintext_len);
+    errno = EBADMSG;
+    return -1;
+  }
 
   return (int)plaintext_len;
 }

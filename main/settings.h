@@ -8,7 +8,7 @@
  */
 
 // Default device name (used if none configured)
-#define SETTINGS_DEFAULT_DEVICE_NAME "ESP32 AirPlay"
+#define SETTINGS_DEFAULT_DEVICE_NAME "O1"
 
 /**
  * Initialize settings module (call once at startup)
@@ -56,6 +56,11 @@ esp_err_t settings_set_wifi_credentials(const char *ssid, const char *password);
  * @return true if credentials exist, false otherwise
  */
 bool settings_has_wifi_credentials(void);
+
+/**
+ * Clear stored WiFi credentials from persistent storage
+ */
+esp_err_t settings_clear_wifi_credentials(void);
 
 /**
  * Get device name (returns default if none saved)

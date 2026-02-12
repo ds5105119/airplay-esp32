@@ -16,9 +16,11 @@
 #include "freertos/task.h"
 #include "sodium.h"
 
+#include "audio_output.h"
 #include "audio_receiver.h"
 #include "audio_stream.h"
 #include "hap.h"
+#include "lcd.h"
 #include "ntp_clock.h"
 #include "plist.h"
 #include "rtsp_fairplay.h"
@@ -29,6 +31,121 @@
 #include "rtsp_events.h"
 
 static const char *TAG = "rtsp_handlers";
+
+// ============================================================================
+// AirPlay metadata helpers
+// ============================================================================
+
+#if CONFIG_RTSP_METADATA_DEBUG
+static void log_body_snippet(const char *label, const uint8_t *body,
+                             size_t body_len) {
+  if (!body || body_len == 0) {
+    ESP_LOGI(TAG, "%s: <empty>", label);
+    return;
+  }
+
+  size_t n = body_len;
+  if (n > 128) {
+    n = 128;
+  }
+
+  ESP_LOGI(TAG, "%s: len=%zu (showing %zu bytes)", label, body_len, n);
+  ESP_LOG_BUFFER_HEXDUMP(TAG, body, n, ESP_LOG_INFO);
+
+  // Best-effort ASCII preview (non-printables -> '.')
+  char ascii[129];
+  for (size_t i = 0; i < n && i + 1 < sizeof(ascii); i++) {
+    unsigned char ch = (unsigned char)body[i];
+    ascii[i] = (ch >= 0x20 && ch <= 0x7E) ? (char)ch : '.';
+  }
+  ascii[n < sizeof(ascii) ? n : (sizeof(ascii) - 1)] = '\0';
+  ESP_LOGI(TAG, "%s(ascii): %s", label, ascii);
+}
+#endif
+
+static uint32_t read_be_u32(const uint8_t *p) {
+  return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) |
+         (uint32_t)p[3];
+}
+
+static bool dmap_find_tag_recursive(const uint8_t *data, size_t len,
+                                    const char tag[4], const uint8_t **out,
+                                    uint32_t *out_len, int depth) {
+  if (!data || len < 8 || !out || !out_len) {
+    return false;
+  }
+  if (depth > 8) {
+    return false;
+  }
+
+  size_t pos = 0;
+  while (pos + 8 <= len) {
+    const uint8_t *cur = data + pos;
+    uint32_t value_len = read_be_u32(cur + 4);
+    pos += 8;
+    if (pos + value_len > len) {
+      return false;
+    }
+
+    if (memcmp(cur, tag, 4) == 0) {
+      *out = data + pos;
+      *out_len = value_len;
+      return true;
+    }
+
+    if (value_len >= 8) {
+      const uint8_t *val = data + pos;
+      if (((val[0] >= 'A' && val[0] <= 'Z') || (val[0] >= 'a' && val[0] <= 'z')) &&
+          ((val[1] >= 'A' && val[1] <= 'Z') || (val[1] >= 'a' && val[1] <= 'z')) &&
+          ((val[2] >= 'A' && val[2] <= 'Z') || (val[2] >= 'a' && val[2] <= 'z')) &&
+          ((val[3] >= 'A' && val[3] <= 'Z') || (val[3] >= 'a' && val[3] <= 'z'))) {
+        if (dmap_find_tag_recursive(val, value_len, tag, out, out_len,
+                                    depth + 1)) {
+          return true;
+        }
+      }
+    }
+
+    pos += value_len;
+  }
+
+  return false;
+}
+
+static bool dmap_find_string(const uint8_t *data, size_t len, const char tag[4],
+                             char *out, size_t out_capacity) {
+  if (!out || out_capacity == 0) {
+    return false;
+  }
+  out[0] = '\0';
+
+  const uint8_t *val = NULL;
+  uint32_t val_len = 0;
+  if (!dmap_find_tag_recursive(data, len, tag, &val, &val_len, 0) || !val ||
+      val_len == 0) {
+    return false;
+  }
+
+  size_t copy_len = val_len;
+  if (copy_len >= out_capacity) {
+    copy_len = out_capacity - 1;
+  }
+  memcpy(out, val, copy_len);
+  out[copy_len] = '\0';
+  return true;
+}
+
+static bool is_all_ascii_printable(const char *s) {
+  if (!s || !*s) {
+    return false;
+  }
+  for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+    if (*p < 0x20 || *p > 0x7e) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // ============================================================================
 // Codec Registry
@@ -1012,18 +1129,89 @@ static void handle_set_parameter(int socket, rtsp_conn_t *conn,
   const uint8_t *body = req->body;
   size_t body_len = req->body_len;
 
+#if CONFIG_RTSP_METADATA_DEBUG
+  ESP_LOGI(TAG, "SET_PARAMETER content_type='%s' body_len=%zu",
+           req->content_type[0] ? req->content_type : "<none>", body_len);
+#endif
+
   if (strstr(req->content_type, "text/parameters")) {
-    if (body) {
-      if (strstr((const char *)body, "volume:")) {
-        const char *vol = strstr((const char *)body, "volume:");
-        if (vol) {
-          float volume = (float)atof(vol + 7);
-          rtsp_conn_set_volume(conn, volume);
+    if (body && body_len > 0) {
+      char params[256];
+      size_t n = body_len;
+      if (n >= sizeof(params)) {
+        n = sizeof(params) - 1;
+      }
+      memcpy(params, body, n);
+      params[n] = '\0';
+
+#if CONFIG_RTSP_METADATA_DEBUG
+      ESP_LOGI(TAG, "text/parameters: %s", params);
+#endif
+
+      const char *vol = strstr(params, "volume:");
+      if (vol) {
+        float volume = (float)atof(vol + 7);
+        rtsp_conn_set_volume(conn, volume);
+      }
+
+      const char *prog = strstr(params, "progress:");
+      if (prog) {
+        int64_t start = 0, current = 0, end = 0;
+        if (sscanf(prog, "progress: %" SCNd64 "/%" SCNd64 "/%" SCNd64, &start,
+                   &current, &end) == 3) {
+          int sr = conn->sample_rate > 0 ? conn->sample_rate : 44100;
+#if CONFIG_RTSP_METADATA_DEBUG
+          ESP_LOGI(TAG,
+                   "parsed progress: start=%" PRId64 " current=%" PRId64
+                   " end=%" PRId64 " sr=%d",
+                   start, current, end, sr);
+#endif
+          lcd_now_playing_set_progress(start, current, end, sr);
         }
+      }
+    }
+  } else if (strstr(req->content_type, "application/x-dmap-tagged")) {
+    if (body && body_len > 0) {
+#if CONFIG_RTSP_METADATA_DEBUG
+      log_body_snippet("dmap", body, body_len);
+#endif
+      char title[128] = {0};
+      char album[128] = {0};
+      char artist[128] = {0};
+
+      dmap_find_string(body, body_len, "minm", title, sizeof(title));
+      dmap_find_string(body, body_len, "asal", album, sizeof(album));
+      dmap_find_string(body, body_len, "asar", artist, sizeof(artist));
+
+      // 1602 LCD can't reliably show UTF-8; prefer ASCII fields if available.
+      const char *best = NULL;
+      if (is_all_ascii_printable(title)) {
+        best = title;
+      } else if (is_all_ascii_printable(album)) {
+        best = album;
+      } else if (is_all_ascii_printable(artist)) {
+        best = artist;
+      } else if (title[0]) {
+        best = title;
+      } else if (album[0]) {
+        best = album;
+      } else if (artist[0]) {
+        best = artist;
+      }
+
+      if (best) {
+#if CONFIG_RTSP_METADATA_DEBUG
+        ESP_LOGI(TAG, "dmap best(title)='%s' (minm='%s' asal='%s' asar='%s')",
+                 best, title, album, artist);
+#endif
+        lcd_now_playing_set_title(best);
       }
     }
   } else if (strstr(req->content_type, "application/x-apple-binary-plist")) {
     if (body && body_len >= 8 && memcmp(body, "bplist00", 8) == 0) {
+#if CONFIG_RTSP_METADATA_DEBUG
+      log_body_snippet("bplist", body, body_len);
+#endif
       int64_t value;
       if (bplist_find_int(body, body_len, "networkTimeSecs", &value)) {
         ESP_LOGI(TAG, "SET_PARAMETER has networkTimeSecs=%lld",
@@ -1032,8 +1220,30 @@ static void handle_set_parameter(int socket, rtsp_conn_t *conn,
       double rate;
       if (bplist_find_real(body, body_len, "rate", &rate)) {
         ESP_LOGI(TAG, "SET_PARAMETER has rate=%.2f", rate);
+        lcd_now_playing_set_rate(rate);
+      }
+
+      char title[128];
+      if (bplist_find_string_deep(body, body_len, "title", title,
+                                  sizeof(title)) ||
+          bplist_find_string_deep(body, body_len, "trackName", title,
+                                  sizeof(title)) ||
+          bplist_find_string_deep(body, body_len, "itemName", title,
+                                  sizeof(title)) ||
+          bplist_find_string_deep(body, body_len, "name", title,
+                                  sizeof(title))) {
+#if CONFIG_RTSP_METADATA_DEBUG
+        ESP_LOGI(TAG, "bplist title='%s'", title);
+#endif
+        lcd_now_playing_set_title(title);
       }
     }
+  } else {
+#if CONFIG_RTSP_METADATA_DEBUG
+    if (body && body_len > 0) {
+      log_body_snippet("unknown content-type body", body, body_len);
+    }
+#endif
   }
 
   rtsp_send_ok(socket, conn, req->cseq);
@@ -1066,11 +1276,11 @@ static void handle_pause(int socket, rtsp_conn_t *conn,
   (void)raw;
   (void)raw_len;
 
-  ESP_LOGI(TAG, "PAUSE received - keeping buffer, setting paused state");
+  ESP_LOGI(TAG, "PAUSE received - flushing all buffers");
 
-  // Don't flush buffer on pause - keep audio data for resume
-  // Only stop playback
+  audio_receiver_flush();
   audio_receiver_set_playing(false);
+  audio_output_flush();
   conn->stream_paused = true;
 
   rtsp_send_ok(socket, conn, req->cseq);
@@ -1083,6 +1293,7 @@ static void handle_flush(int socket, rtsp_conn_t *conn,
   (void)raw_len;
 
   audio_receiver_flush();
+  audio_output_flush();
   rtsp_send_ok(socket, conn, req->cseq);
 }
 
@@ -1106,6 +1317,7 @@ static void handle_teardown(int socket, rtsp_conn_t *conn,
   // TEARDOWN with streams = stream teardown (may be followed by new SETUP)
   // TEARDOWN without streams = full session teardown (disconnect)
   audio_receiver_stop();
+  audio_output_flush();
   conn->stream_active = false;
   conn->stream_paused =
       has_streams; // Keep session ready if only streams torn down
@@ -1162,27 +1374,21 @@ static void handle_setrateanchortime(int socket, rtsp_conn_t *conn,
              (unsigned long long)network_time_secs,
              (unsigned long long)rtp_time, rate);
 
-    // Only set new anchor if NOT resuming from pause with a valid existing
-    // anchor When resuming, the sender provides a new anchor adjusted for
-    // elapsed time, but buffered frames are still timed relative to the old
-    // anchor
-    bool is_resume = (rate != 0.0 && conn->stream_paused);
-    if (network_time_secs != 0 && rtp_time != 0 && !is_resume) {
+    if (network_time_secs != 0 && rtp_time != 0) {
       uint64_t frac = network_time_frac >> 32;
       frac = (frac * 1000000000ULL) >> 32;
       uint64_t network_time_ns = network_time_secs * 1000000000ULL + frac;
       audio_receiver_set_anchor_time(clock_id, network_time_ns,
                                      (uint32_t)rtp_time);
-    } else if (is_resume) {
-      ESP_LOGI(TAG, "SETRATEANCHORTIME: resume - keeping existing anchor for "
-                    "buffered frames");
     }
   }
 
   if (rate == 0.0) {
     ESP_LOGI(TAG, "SETRATEANCHORTIME: rate=0 -> PAUSING");
     conn->stream_paused = true;
+    audio_receiver_flush();
     audio_receiver_set_playing(false);
+    audio_output_flush();
     rtsp_events_emit(RTSP_EVENT_PAUSED);
   } else {
     ESP_LOGI(TAG, "SETRATEANCHORTIME: rate=%.1f -> RESUMING (was_paused=%d)",

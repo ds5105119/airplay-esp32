@@ -37,6 +37,7 @@ set( SRC_FILES
     "network/ota.c"
     "network/dns_server.c"
     "led.c"
+    "lcd/lcd.c"
 )
 set( DEPS
     driver
@@ -62,6 +63,7 @@ endif()
 
 idf_component_register(
     SRCS ${SRC_FILES}
-    INCLUDE_DIRS "." "audio" "rtsp" "plist" "hap" "network"
+    INCLUDE_DIRS "." "audio" "rtsp" "plist" "hap" "network" "lcd"
     PRIV_REQUIRES ${DEPS}
+    EMBED_TXTFILES "network/main.html"
 )

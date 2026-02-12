@@ -31,6 +31,7 @@ static bool s_wifi_initialized = false;
 static bool s_sta_connected = false;
 static bool s_bssid_set = false;
 static esp_timer_handle_t s_retry_timer = NULL;
+static bool s_settings_ap_enabled = true;
 
 // Saved AP config from init, used to re-enable AP without duplication
 static wifi_config_t s_ap_config;
@@ -60,6 +61,9 @@ static void schedule_retry(void) {
 }
 
 static void enable_ap_mode(void) {
+  if (!s_settings_ap_enabled) {
+    return;
+  }
   wifi_mode_t mode;
   if (esp_wifi_get_mode(&mode) == ESP_OK && mode != WIFI_MODE_APSTA) {
     ESP_LOGI(TAG, "Re-enabling AP mode for configuration access");
@@ -114,10 +118,11 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     s_sta_connected = true;
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 
-    // Disable AP mode when STA connects
+    // Keep AP enabled by default, but honor explicit user "close settings".
     wifi_mode_t mode;
-    if (esp_wifi_get_mode(&mode) == ESP_OK && mode == WIFI_MODE_APSTA) {
-      ESP_LOGI(TAG, "STA connected, disabling AP mode");
+    if (!s_settings_ap_enabled &&
+        esp_wifi_get_mode(&mode) == ESP_OK && mode == WIFI_MODE_APSTA) {
+      ESP_LOGI(TAG, "Settings AP disabled by user, switching to STA-only mode");
       esp_wifi_set_mode(WIFI_MODE_STA);
     }
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_START) {
@@ -229,6 +234,7 @@ static void wifi_init_base(void) {
 
 void wifi_init_apsta(const char *ap_ssid, const char *ap_password) {
   wifi_init_base();
+  s_settings_ap_enabled = true;
 
   if (!s_sta_netif) {
     s_sta_netif = esp_netif_create_default_wifi_sta();
@@ -255,7 +261,7 @@ void wifi_init_apsta(const char *ap_ssid, const char *ap_password) {
   sta_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
   // Configure AP and save for later re-enable
-  const char *default_ssid = ap_ssid ? ap_ssid : "ESP32-AirPlay-Setup";
+  const char *default_ssid = ap_ssid ? ap_ssid : "O1";
   const char *default_password = ap_password ? ap_password : "";
 
   memset(&s_ap_config, 0, sizeof(s_ap_config));
@@ -284,6 +290,40 @@ void wifi_init_apsta(const char *ap_ssid, const char *ap_password) {
   if (has_credentials) {
     ESP_LOGI(TAG, "Connecting to WiFi: %s", ssid);
   }
+}
+
+esp_err_t wifi_settings_ap_close(void) {
+  s_settings_ap_enabled = false;
+  wifi_mode_t mode;
+  if (esp_wifi_get_mode(&mode) == ESP_OK && mode == WIFI_MODE_APSTA) {
+    ESP_LOGI(TAG, "Closing settings AP (switching to STA-only)");
+    return esp_wifi_set_mode(WIFI_MODE_STA);
+  }
+  return ESP_OK;
+}
+
+esp_err_t wifi_settings_ap_open(void) {
+  s_settings_ap_enabled = true;
+  if (!s_ap_netif) {
+    s_ap_netif = esp_netif_create_default_wifi_ap();
+  }
+
+  wifi_mode_t mode;
+  esp_err_t err = esp_wifi_get_mode(&mode);
+  if (err == ESP_OK && mode != WIFI_MODE_APSTA) {
+    ESP_LOGI(TAG, "Opening settings AP (switching to AP+STA)");
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (err != ESP_OK) {
+      return err;
+    }
+  }
+
+  // Restore AP config in case it was lost across mode changes.
+  return esp_wifi_set_config(WIFI_IF_AP, &s_ap_config);
+}
+
+bool wifi_settings_ap_is_enabled(void) {
+  return s_settings_ap_enabled;
 }
 
 bool wifi_wait_connected(uint32_t timeout_ms) {

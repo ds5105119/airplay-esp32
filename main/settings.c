@@ -168,6 +168,41 @@ bool settings_has_wifi_credentials(void) {
   return settings_get_wifi_ssid(ssid, sizeof(ssid)) == ESP_OK;
 }
 
+esp_err_t settings_clear_wifi_credentials(void) {
+  nvs_handle_t nvs;
+  esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  esp_err_t err_ssid = nvs_erase_key(nvs, NVS_KEY_WIFI_SSID);
+  if (err_ssid == ESP_ERR_NVS_NOT_FOUND) {
+    err_ssid = ESP_OK;
+  }
+
+  esp_err_t err_pwd = nvs_erase_key(nvs, NVS_KEY_WIFI_PASSWORD);
+  if (err_pwd == ESP_ERR_NVS_NOT_FOUND) {
+    err_pwd = ESP_OK;
+  }
+
+  if (err_ssid == ESP_OK && err_pwd == ESP_OK) {
+    err = nvs_commit(nvs);
+  } else {
+    err = (err_ssid != ESP_OK) ? err_ssid : err_pwd;
+  }
+
+  nvs_close(nvs);
+
+  if (err == ESP_OK) {
+    ESP_LOGI(TAG, "Cleared WiFi credentials");
+  } else {
+    ESP_LOGE(TAG, "Failed to clear WiFi credentials: %s", esp_err_to_name(err));
+  }
+
+  return err;
+}
+
 esp_err_t settings_get_device_name(char *name, size_t len) {
   if (!name || len == 0) {
     return ESP_ERR_INVALID_ARG;

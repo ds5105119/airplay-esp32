@@ -48,3 +48,11 @@ esp_err_t wifi_scan(wifi_ap_record_t **ap_list, uint16_t *ap_count);
  * Disconnect and stop WiFi
  */
 void wifi_stop(void);
+
+/**
+ * Control the configuration SoftAP ("settings AP").
+ * Default: enabled at boot.
+ */
+esp_err_t wifi_settings_ap_close(void);
+esp_err_t wifi_settings_ap_open(void);
+bool wifi_settings_ap_is_enabled(void);

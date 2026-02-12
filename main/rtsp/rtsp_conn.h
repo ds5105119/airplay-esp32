@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -20,6 +21,16 @@ struct rtsp_conn {
   // HAP session for pairing/encryption
   hap_session_t *hap_session;
   bool encrypted_mode;
+
+  // Encrypted RTSP receive state (handles partial reads with socket timeouts)
+  struct {
+    uint8_t len_buf[2];
+    uint8_t len_received;
+    uint16_t block_len;
+    uint8_t *encrypted;
+    size_t encrypted_len;
+    size_t encrypted_received;
+  } crypto_rx;
 
   // Volume control: Q15 fixed-point (0-32768)
   // 32768 = 0 dB (unity), 0 = mute
